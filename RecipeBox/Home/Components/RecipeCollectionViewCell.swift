@@ -6,27 +6,38 @@
 //
 
 import UIKit
+import SDWebImage
 
 class RecipeCollectionViewCell: UICollectionViewCell {
-    let imageView: UIImageView = {
+    
+    private var loader: UIActivityIndicatorView = {
+        let loader = UIActivityIndicatorView(style: .medium)
+        loader.color = .accent
+        loader.translatesAutoresizingMaskIntoConstraints = false
+        loader.layer.zPosition = 2
+        return loader
+    }()
+    
+    private let imageView: UIImageView = {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFill
         imageView.layer.cornerRadius = 60
         imageView.layer.masksToBounds = true
         imageView.layer.zPosition = 1
+        imageView.backgroundColor = .gray.withAlphaComponent(0.5)
         return imageView
     }()
     
-    let textView: UIView = {
+    private let textView: UIView = {
         let view = UIView()
         view.backgroundColor = .gray4.withAlphaComponent(0.5)
         view.layer.cornerRadius = 12
         view.layer.masksToBounds = true
         return view
     }()
-
     
-    let ratingView: UIView = {
+    
+    private let ratingView: UIView = {
         let view = UIView()
         view.backgroundColor = .accent
         view.layer.cornerRadius = 12
@@ -35,7 +46,7 @@ class RecipeCollectionViewCell: UICollectionViewCell {
         return view
     }()
     
-    let ratingLabel: UILabel = {
+    private let ratingLabel: UILabel = {
         let label = UILabel()
         label.text = "4.5"
         label.font = UIFont.systemFont(ofSize: 12, weight: .medium)
@@ -44,17 +55,17 @@ class RecipeCollectionViewCell: UICollectionViewCell {
         return label
     }()
     
-    let titleLabel: UILabel = {
+    private let titleLabel: UILabel = {
         let label = UILabel()
         label.text = "Classic Greek Salad"
-        label.font = UIFont.systemFont(ofSize: 16, weight: .bold)
+        label.font = UIFont.systemFont(ofSize: 14, weight: .bold)
         label.textColor = .black
         label.textAlignment = .center
-        label.numberOfLines = 0
+        label.numberOfLines = 2
         return label
     }()
     
-    let timeTextLabel: UILabel = {
+    private let timeTextLabel: UILabel = {
         let label = UILabel()
         label.text = "Time"
         label.font = UIFont.systemFont(ofSize: 14, weight: .medium)
@@ -62,23 +73,12 @@ class RecipeCollectionViewCell: UICollectionViewCell {
         return label
     }()
     
-    let timeLabel: UILabel = {
+    private let timeLabel: UILabel = {
         let label = UILabel()
         label.text = "15 Mins"
         label.font = UIFont.systemFont(ofSize: 14, weight: .medium)
         label.textColor = .darkGray
         return label
-    }()
-    
-    let bookmarkButton: UIButton = {
-        let button = UIButton()
-        let image = UIImage(
-            systemName: "bookmark",
-            withConfiguration: UIImage.SymbolConfiguration(weight: .regular)
-        )
-        button.setImage(image, for: .normal)
-        button.tintColor = UIColor.systemGreen
-        return button
     }()
     
     // Init
@@ -98,6 +98,7 @@ class RecipeCollectionViewCell: UICollectionViewCell {
         
         // Add subviews
         contentView.addSubview(imageView)
+        contentView.addSubview(loader)
         contentView.addSubview(ratingView)
         contentView.addSubview(textView)
         
@@ -105,7 +106,6 @@ class RecipeCollectionViewCell: UICollectionViewCell {
         textView.addSubview(titleLabel)
         textView.addSubview(timeTextLabel)
         textView.addSubview(timeLabel)
-        textView.addSubview(bookmarkButton)
         
         // Disable Autoresizing Mask Translation
         imageView.translatesAutoresizingMaskIntoConstraints = false
@@ -115,7 +115,6 @@ class RecipeCollectionViewCell: UICollectionViewCell {
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         timeTextLabel.translatesAutoresizingMaskIntoConstraints = false
         timeLabel.translatesAutoresizingMaskIntoConstraints = false
-        bookmarkButton.translatesAutoresizingMaskIntoConstraints = false
         
         // Constraints
         NSLayoutConstraint.activate([
@@ -126,6 +125,11 @@ class RecipeCollectionViewCell: UICollectionViewCell {
                 .constraint(equalTo: contentView.centerXAnchor),
             imageView.widthAnchor.constraint(equalToConstant: 120),
             imageView.heightAnchor.constraint(equalToConstant: 120),
+            
+            //loader
+            loader.centerXAnchor.constraint(equalTo: imageView.centerXAnchor),
+            loader.centerYAnchor.constraint(equalTo: imageView.centerYAnchor),
+            
             
             // Rating View at top-right of image
             ratingView.topAnchor
@@ -164,27 +168,28 @@ class RecipeCollectionViewCell: UICollectionViewCell {
             timeLabel.bottomAnchor.constraint(equalTo: textView.bottomAnchor, constant: -10),
             timeLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor, constant: 10),
             
-            // Bookmark button at the bottom-right
-            bookmarkButton.bottomAnchor.constraint(equalTo: textView.bottomAnchor, constant: -10),
-            bookmarkButton.trailingAnchor.constraint(equalTo: textView.trailingAnchor, constant: -10),
-            bookmarkButton.widthAnchor.constraint(equalToConstant: 24),
-            bookmarkButton.heightAnchor.constraint(equalToConstant: 24),
         ])
     }
     
     // Configure the cell with data
-    func configure(with recipe: Recipe) {
-        imageView.image = UIImage(named: recipe.imageName)
-        titleLabel.text = recipe.title
+    func configure(with recipe: RecipeModel) {
+        titleLabel.text = recipe.name
         timeLabel.text = "\(recipe.time) Mins"
-        ratingLabel.text = "\(recipe.rating)"
+        let image = recipe.imageURL.isEmpty ? "NoImage" : recipe.imageURL
+        
+        if image != "NoImage",let imageURL = URL(string: image) {
+            loader.startAnimating()
+            self.imageView.sd_setImage(with: imageURL, placeholderImage: UIImage(named: "placeholder")) { [weak self] downloadedImage, error, _, _ in
+                self?.loader.stopAnimating()
+            if let error = error {
+                print("Failed to load image: \(error.localizedDescription)")
+                self?.imageView.image = UIImage(named: "NoImage")
+            } else {
+                self?.imageView.image = downloadedImage
+            }
+        }
+        } else {
+            self.imageView.image = UIImage(named: image)
+        }
     }
-}
-
-
-struct Recipe {
-    let title: String
-    let time: Int
-    let rating: Double
-    let imageName: String
 }

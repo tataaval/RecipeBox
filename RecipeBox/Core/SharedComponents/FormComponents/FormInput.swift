@@ -82,6 +82,10 @@ class FormInput: UIView {
         return textField.text ?? ""
     }
     
+    func setText(_ text: String) {
+        textField.text = text
+    }
+    
     func clearText() {
         textField.text = ""
     }

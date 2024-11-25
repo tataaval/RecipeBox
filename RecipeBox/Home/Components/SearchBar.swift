@@ -7,7 +7,14 @@
 
 import UIKit
 
+protocol SearchBarDelegate: AnyObject{
+    func handleSearch(keyword: String)
+}
+
 class SearchBar: UIView {
+    
+    weak var delegate: SearchBarDelegate?
+    private var debouncer: Debouncer?
     
     let containerView: UIView = {
         let view = UIView()
@@ -26,28 +33,26 @@ class SearchBar: UIView {
         return textField
     }()
     
-    let searchIconImageView: UIImageView = {
-        let imageView = UIImageView()
-        imageView.image = UIImage(systemName: "magnifyingglass")
-        imageView.tintColor = .accent
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-        return imageView
-    }()
-    
-    let filterButton: UIButton = {
+    let closeButton: UIButton = {
         let button = UIButton(type: .system)
-        button.setImage(UIImage(named: "Filter"), for: .normal)
+        button.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.tintColor = .white
-        button.backgroundColor = .accent
-        button.layer.cornerRadius = 8
+        button.tintColor = .accent
+        button.isHidden = true
         return button
     }()
     
     override init(frame: CGRect) {
         super.init(frame: .zero)
         SetupInput()
-        SetupFilterButton()
+        debouncer = Debouncer(delay: 1) { [weak self] in
+            guard let keyword = self?.textField.text else { return }
+            self?.delegate?.handleSearch(keyword: keyword)
+        }
+        textField.addTarget(self, action: #selector(textFieldDidChange(_:)), for: .editingChanged)
+        closeButton.addAction(UIAction(handler: { [weak self] _ in
+            self?.clearText()
+        }), for: .touchUpInside)
         
     }
     
@@ -58,37 +63,36 @@ class SearchBar: UIView {
     private func SetupInput(){
         self.addSubview(containerView)
         
-        containerView.addSubview(searchIconImageView)
         containerView.addSubview(textField)
+        containerView.addSubview(closeButton)
         
         NSLayoutConstraint.activate([
             containerView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
             containerView.topAnchor.constraint(equalTo: self.topAnchor),
             containerView.bottomAnchor.constraint(equalTo: self.bottomAnchor),
+            containerView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
             
-            searchIconImageView.leadingAnchor.constraint(equalTo: textField.trailingAnchor, constant: -20),
-            searchIconImageView.centerYAnchor.constraint(equalTo: containerView.centerYAnchor),
-            searchIconImageView.widthAnchor.constraint(equalToConstant: 25),
-            searchIconImageView.heightAnchor.constraint(equalToConstant: 25),
-            
-            textField.leadingAnchor.constraint(equalTo: self.leadingAnchor, constant: 10),
-            textField.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -10),
+            textField.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 10),
             textField.topAnchor.constraint(equalTo: containerView.topAnchor),
             textField.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
             
+            closeButton.leadingAnchor.constraint(equalTo: textField.trailingAnchor, constant: 10),
+            closeButton.widthAnchor.constraint(equalToConstant: 30),
+            closeButton.heightAnchor.constraint(equalToConstant: 30),
+            closeButton.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -10),
+            closeButton.centerYAnchor.constraint(equalTo: containerView.centerYAnchor)
             
         ])
     }
     
-    private func SetupFilterButton() {
-        self.addSubview(filterButton)
-        
-        NSLayoutConstraint.activate([
-            filterButton.leadingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: 10),
-//            filterButton.centerYAnchor.constraint(equalTo: self.centerYAnchor),
-            filterButton.widthAnchor.constraint(equalToConstant: 40),
-            filterButton.heightAnchor.constraint(equalToConstant: 40),
-            filterButton.trailingAnchor.constraint(equalTo: self.trailingAnchor)
-        ])
+    @objc private func textFieldDidChange(_ textField: UITextField) {
+        debouncer?.call()
+        closeButton.isHidden = textField.text?.isEmpty ?? true
+    }
+    
+    private func clearText() {
+        textField.text = ""
+        closeButton.isHidden = true
+        delegate?.handleSearch(keyword: "")
     }
 }

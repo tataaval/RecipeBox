@@ -62,7 +62,6 @@ class DynamicInputStack: UIView {
             addButton.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
         
-        // Add an initial plain ingredient input
         stackView.addArrangedSubview(initialInputField)
         
     }
@@ -80,6 +79,27 @@ class DynamicInputStack: UIView {
     func getInputs() -> [String] {
         return stackView.arrangedSubviews.compactMap { ($0 as? FormInput)?.getText() }.filter { !$0.isEmpty }
     }
+    
+    func configureWithInputs(_ inputs: [String]) {
+        clearAllInputs()
+        for (index, input) in inputs.enumerated() {
+            let isRemovable = index > 0
+            let inputField = FormInput(placeholder: inputPlaceholder, removable: isRemovable)
+            inputField.setText(input)
+            
+            if isRemovable {
+                inputField.onRemove = { [weak self, weak inputField] in
+                    guard let self = self, let input = inputField else { return }
+                    self.stackView.removeArrangedSubview(input)
+                    input.removeFromSuperview()
+                }
+            }
+            
+            stackView.addArrangedSubview(inputField)
+        }
+        
+    }
+    
     
     func clearAllInputs() {
         for view in stackView.arrangedSubviews {

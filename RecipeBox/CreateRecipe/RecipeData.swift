@@ -1,5 +1,5 @@
 //
-//  RecipeModel.swift
+//  RecipeData.swift
 //  RecipeBox
 //
 //  Created by Tatarella on 25.10.24.
